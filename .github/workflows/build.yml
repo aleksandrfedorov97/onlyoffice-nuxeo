@@ -1,0 +1,53 @@
+name: Build
+
+on:
+  push:
+    branches:
+      - master
+      - develop
+      - 'lts*'
+      - 'release/**'
+    tags:
+      - 'v*'
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build Nuxeo package
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Nuxeo LTS 2025 requires Java 21 (enforced by nuxeo-ecm parent POM).
+      # `server-*` inputs write ~/.m2/settings.xml with credentials for the
+      # `maven-private` repository declared in pom.xml (packages.nuxeo.com).
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+          server-id: maven-private
+          server-username: NUXEO_MAVEN_USERNAME
+          server-password: NUXEO_MAVEN_PASSWORD
+
+      - name: Build with Maven
+        run: mvn -B -ntp clean install
+        env:
+          NUXEO_MAVEN_USERNAME: ${{ secrets.NUXEO_MAVEN_USERNAME }}
+          NUXEO_MAVEN_PASSWORD: ${{ secrets.NUXEO_MAVEN_PASSWORD }}
+
+      - name: Upload package
+        uses: actions/upload-artifact@v4
+        with:
+          name: onlyoffice-nuxeo-package
+          path: onlyoffice-nuxeo-package/target/onlyoffice-nuxeo-package-*.zip
+          if-no-files-found: error
+          retention-days: 30
