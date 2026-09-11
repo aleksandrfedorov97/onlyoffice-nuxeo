@@ -1,6 +1,6 @@
 /**
  *
- * (c) Copyright Ascensio System SIA 2023
+ * (c) Copyright Ascensio System SIA 2026
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,12 +18,11 @@
 
 package org.onlyoffice.sdk.service.callback;
 
-import com.onlyoffice.manager.request.RequestManager;
+import com.onlyoffice.client.DocumentServerClient;
 import com.onlyoffice.manager.security.JwtManager;
 import com.onlyoffice.manager.settings.SettingsManager;
 import com.onlyoffice.model.documenteditor.Callback;
 import com.onlyoffice.service.documenteditor.callback.DefaultCallbackService;
-import org.apache.hc.core5.http.HttpEntity;
 import org.nuxeo.ecm.automation.core.util.DocumentHelper;
 import org.nuxeo.ecm.core.api.Blob;
 import org.nuxeo.ecm.core.api.Blobs;
@@ -50,14 +49,18 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Map;
 
+import static jakarta.servlet.http.HttpServletResponse.SC_CONFLICT;
+
 public class CallbackServiceImpl extends DefaultCallbackService {
     private static final Logger logger = LoggerFactory.getLogger(CallbackServiceImpl.class);
 
-    private RequestManager requestManager;
+    private DocumentServerClient documentServerClient;
     private Utils utils;
 
     public CallbackServiceImpl() {
@@ -66,7 +69,7 @@ public class CallbackServiceImpl extends DefaultCallbackService {
                 Framework.getService(SettingsManager.class)
         );
 
-        this.requestManager = Framework.getService(RequestManager.class);
+        this.documentServerClient = Framework.getService(DocumentServerClient.class);
         this.utils = Framework.getService(Utils.class);
     }
 
@@ -86,7 +89,7 @@ public class CallbackServiceImpl extends DefaultCallbackService {
     }
 
     @Override
-    public void handlerSave(Callback callback, String fileId) throws Exception {
+    public void handlerSave(final Callback callback, final String fileId) throws Exception {
         logger.info("Document Updated, changing content");
         WebContext ctx = WebEngine.getActiveContext();
         CoreSession session = ctx.getCoreSession();
@@ -99,7 +102,7 @@ public class CallbackServiceImpl extends DefaultCallbackService {
     }
 
     @Override
-    public void handlerClosed(Callback callback, String fileId) throws Exception {
+    public void handlerClosed(final Callback callback, final String fileId) throws Exception {
         logger.info("No document updates, unlocking node");
         WebContext ctx = WebEngine.getActiveContext();
         CoreSession session = ctx.getCoreSession();
@@ -109,33 +112,36 @@ public class CallbackServiceImpl extends DefaultCallbackService {
         this.removeLock(session, model);
     }
 
-    private void updateDocument(CoreSession session, DocumentModel model, String changeToken, String url) throws Exception {
+    private void updateDocument(final CoreSession session, final DocumentModel model, final String changeToken,
+                                final String url) throws Exception {
         Blob original = getBlob(model, "file:content");
 
-        requestManager.executeGetRequest(url, new RequestManager.Callback<Void>() {
-            @Override
-            public Void doWork(final Object response) throws Exception {
-                Blob saved = Blobs.createBlob(((HttpEntity)response).getContent(), original.getMimeType(), original.getEncoding());
-                saved.setFilename(original.getFilename());
-
-                DocumentHelper.addBlob(model.getProperty("file:content"), saved);
-
-                if (model.hasFacet(FacetNames.VERSIONABLE)) {
-                    VersioningOption vo = VersioningOption.MINOR;
-                    model.putContextData(VersioningService.VERSIONING_OPTION, vo);
-                }
-
-                model.putContextData(CoreSession.CHANGE_TOKEN, utils.getChangeToken(changeToken));
-
-                session.saveDocument(model);
-                session.save();
-
-                return null;
+        File tempFile = File.createTempFile("onlyoffice", null);
+        try {
+            try (FileOutputStream fos = new FileOutputStream(tempFile)) {
+                documentServerClient.getFile(url, fos);
             }
-        });
+
+            Blob saved = Blobs.createBlob(tempFile, original.getMimeType(), original.getEncoding());
+            saved.setFilename(original.getFilename());
+
+            DocumentHelper.addBlob(model.getProperty("file:content"), saved);
+
+            if (model.hasFacet(FacetNames.VERSIONABLE)) {
+                VersioningOption vo = VersioningOption.MINOR;
+                model.putContextData(VersioningService.VERSIONING_OPTION, vo);
+            }
+
+            model.putContextData(CoreSession.CHANGE_TOKEN, utils.getChangeToken(changeToken));
+
+            session.saveDocument(model);
+            session.save();
+        } finally {
+            tempFile.delete();
+        }
     }
 
-    private void removeLock(CoreSession session, DocumentModel model) throws Exception {
+    private void removeLock(final CoreSession session, final DocumentModel model) throws Exception {
         RepositoryService repositoryService = Framework.getService(RepositoryService.class);
         Session repoSession = repositoryService.getSession(model.getRepositoryName());
 
@@ -143,18 +149,27 @@ public class CallbackServiceImpl extends DefaultCallbackService {
         String owner = model.getLockInfo().getOwner();
 
         Lock lock = doc.removeLock(owner);
-        if (lock == null) {
-
-        } else if (lock.getFailed()) {
-            throw new LockException("Document already locked by " + lock.getOwner() + ": " + model.getRef(), 409);
+        if (lock != null && lock.getFailed()) {
+            throw new LockException(
+                    "Document already locked by " + lock.getOwner() + ": " + model.getRef(),
+                    SC_CONFLICT
+            );
         } else {
             Map<String, Serializable> options = new HashMap();
             options.put("lock", lock);
-            this.notifyEvent("documentUnlocked", model, options, (String)null, (String)null, true, false, session);
+            this.notifyEvent(
+                    "documentUnlocked",
+                    model, options,
+                    (String) null,
+                    (String) null,
+                    true,
+                    false,
+                    session
+            );
         }
     }
 
-    private Blob getBlob(DocumentModel model, String xpath) {
+    private Blob getBlob(final DocumentModel model, final String xpath) {
         Blob blob = (Blob) model.getPropertyValue(xpath);
         if (blob == null) {
             BlobHolder bh = model.getAdapter(BlobHolder.class);
@@ -165,8 +180,9 @@ public class CallbackServiceImpl extends DefaultCallbackService {
         return blob;
     }
 
-    private void notifyEvent(String eventId, DocumentModel source, Map<String, Serializable> options, String category,
-                             String comment, boolean withLifeCycle, boolean inline, CoreSession session) {
+    private void notifyEvent(final String eventId, final DocumentModel source, final Map<String, Serializable> options,
+                             final String category, final String comment, final boolean withLifeCycle,
+                             final boolean inline, final CoreSession session) {
         DocumentEventContext ctx = new DocumentEventContext(session, session.getPrincipal(), source);
         if (options != null) {
             ctx.setProperties(options);
@@ -192,6 +208,6 @@ public class CallbackServiceImpl extends DefaultCallbackService {
             event.setInline(true);
         }
 
-        ((EventService)Framework.getService(EventService.class)).fireEvent(event);
+        ((EventService) Framework.getService(EventService.class)).fireEvent(event);
     }
 }

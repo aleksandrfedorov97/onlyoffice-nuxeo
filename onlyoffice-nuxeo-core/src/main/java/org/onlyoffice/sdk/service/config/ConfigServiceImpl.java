@@ -1,6 +1,6 @@
 /**
  *
- * (c) Copyright Ascensio System SIA 2023
+ * (c) Copyright Ascensio System SIA 2026
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -56,7 +56,11 @@ public class ConfigServiceImpl extends DefaultConfigService {
         DocumentModel model = session.getDocument(new IdRef(fileId));
         String fileName = getDocumentManager().getDocumentName(fileId);
 
-        Boolean editPermission = permissionService.checkPermission(model, ctx.getPrincipal(), SecurityConstants.WRITE_PROPERTIES);
+        Boolean editPermission = permissionService.checkPermission(
+                model,
+                ctx.getPrincipal(),
+                SecurityConstants.WRITE_PROPERTIES
+        );
         Boolean isEditable = getDocumentManager().isEditable(fileName) || getDocumentManager().isFillable(fileName);
 
         return Permissions.builder()

@@ -1,5 +1,13 @@
 # Change Log
 
+##
+## Added
+- support for Nuxeo 2025.*
+
+## Changed
+- updated document type icons (word, cell, slide, pdf)
+- updated com.onlyoffice:docs-integration-sdk to v1.8.0, see [ONLYOFFICE/docs-integration-sdk-java v1.8.0](https://github.com/ONLYOFFICE/docs-integration-sdk-java/releases/tag/v1.8.0)
+
 ## 3.0.0
 ## Added
 - core of the package has been moved to com.onlyoffice.docs-integration-sdk (https://github.com/ONLYOFFICE/docs-integration-sdk-java)
