@@ -80,7 +80,8 @@
     <!-- Checks for Headers                                -->
     <!-- See https://checkstyle.org/config_header.html   -->
     <module name="Header">
-        <property name="headerFile" value="onlyoffice.header"/>
+        <!-- Resolved by maven-checkstyle-plugin from headerLocation in pom.xml -->
+        <property name="headerFile" value="${checkstyle.header.file}"/>
         <property name="fileExtensions" value="java"/>
     </module>
 

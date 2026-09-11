@@ -12,8 +12,23 @@
   <artifactId>onlyoffice-nuxeo-parent</artifactId>
   <version>3.0.0</version>
   <name>ONLYOFFICE Nuxeo Parent</name>
-  <description>Bring full office editing to your Nuxeo content platform — edit, co-author, and manage office files without leaving Nuxeo.</description>
+  <description>Bring full office editing to your Nuxeo content platform - edit, co-author, and manage office files without leaving Nuxeo.</description>
   <packaging>pom</packaging>
+  <url>https://github.com/ONLYOFFICE/onlyoffice-nuxeo</url>
+
+  <licenses>
+    <license>
+      <name>Apache License, Version 2.0</name>
+      <url>https://www.apache.org/licenses/LICENSE-2.0</url>
+      <distribution>repo</distribution>
+    </license>
+  </licenses>
+
+  <scm>
+    <url>https://github.com/ONLYOFFICE/onlyoffice-nuxeo</url>
+    <connection>scm:git:https://github.com/ONLYOFFICE/onlyoffice-nuxeo.git</connection>
+    <developerConnection>scm:git:git@github.com:ONLYOFFICE/onlyoffice-nuxeo.git</developerConnection>
+  </scm>
 
   <modules>
     <module>onlyoffice-nuxeo-core</module>
@@ -40,11 +55,6 @@
         <version>${project.version}</version>
       </dependency>
       <dependency>
-        <groupId>org.onlyoffice</groupId>
-        <artifactId>onlyoffice-nuxeo-package</artifactId>
-        <version>${project.version}</version>
-      </dependency>
-      <dependency>
         <groupId>com.auth0</groupId>
         <artifactId>java-jwt</artifactId>
         <version>4.0.0</version>
@@ -65,34 +75,10 @@
 
   <build>
     <plugins>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-surefire-plugin</artifactId>
-        <version>2.17</version>
-        <configuration>
-          <argLine>-Dfile.encoding=UTF-8</argLine>
-        </configuration>
-        <dependencies>
-          <dependency>
-            <groupId>org.apache.maven.surefire</groupId>
-            <artifactId>surefire-junit47</artifactId>
-            <version>2.17</version>
-          </dependency>
-        </dependencies>
-      </plugin>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-compiler-plugin</artifactId>
-        <version>3.1</version>
-        <configuration>
-          <source>1.8</source>
-          <target>1.8</target>
-        </configuration>
-      </plugin>
+      <!-- Compiler, surefire and jar plugin versions are managed by nuxeo-parent. -->
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-jar-plugin</artifactId>
-        <version>2.3.1</version>
         <configuration>
           <archive>
             <manifestFile>src/main/resources/META-INF/MANIFEST.MF</manifestFile>
@@ -108,14 +94,17 @@
         <artifactId>maven-checkstyle-plugin</artifactId>
         <version>3.3.0</version>
         <configuration>
-          <configLocation>checkstyle.xml</configLocation>
+          <!-- Paths are anchored to the reactor root so the same files are used from every module. -->
+          <configLocation>${maven.multiModuleProjectDirectory}/checkstyle.xml</configLocation>
+          <suppressionsLocation>${maven.multiModuleProjectDirectory}/checkstyle-suppressions.xml</suppressionsLocation>
+          <suppressionsFileExpression>org.checkstyle.sun.suppressionfilter.config</suppressionsFileExpression>
+          <headerLocation>${maven.multiModuleProjectDirectory}/onlyoffice.header</headerLocation>
           <failsOnError>true</failsOnError>
           <failOnViolation>true</failOnViolation>
           <logViolationsToConsole>true</logViolationsToConsole>
           <violationSeverity>warning</violationSeverity>
           <consoleOutput>true</consoleOutput>
-          <includeTestSourceDirectory>true
-          </includeTestSourceDirectory>
+          <includeTestSourceDirectory>true</includeTestSourceDirectory>
         </configuration>
         <executions>
           <execution>
@@ -136,10 +125,10 @@
         <enabled>true</enabled>
       </releases>
       <snapshots>
-        <updatePolicy>always</updatePolicy>
-        <enabled>true</enabled>
+        <enabled>false</enabled>
       </snapshots>
     </repository>
+    <!-- Nuxeo LTS artifacts (nuxeo-parent 20xx.*) are only published here; requires packages.nuxeo.com credentials. -->
     <repository>
       <id>maven-private</id>
       <url>https://packages.nuxeo.com/repository/maven-private/</url>
@@ -147,34 +136,8 @@
         <enabled>true</enabled>
       </releases>
       <snapshots>
-        <updatePolicy>always</updatePolicy>
-        <enabled>true</enabled>
-      </snapshots>
-    </repository>
-    <repository>
-      <id>nuxeo-studio</id>
-      <url>https://connect.nuxeo.com/nuxeo/site/studio/maven</url>
-      <releases>
-        <enabled>true</enabled>
-      </releases>
-      <snapshots>
-        <updatePolicy>always</updatePolicy>
-        <enabled>true</enabled>
+        <enabled>false</enabled>
       </snapshots>
     </repository>
   </repositories>
-
-  <pluginRepositories>
-    <pluginRepository>
-      <id>public</id>
-      <url>https://maven.nuxeo.org/nexus/content/groups/public</url>
-      <name>Nuxeo releases</name>
-      <releases>
-        <enabled>true</enabled>
-      </releases>
-      <snapshots>
-        <enabled>false</enabled>
-      </snapshots>
-    </pluginRepository>
-  </pluginRepositories>
 </project>

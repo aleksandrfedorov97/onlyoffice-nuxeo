@@ -23,7 +23,6 @@
         <filter token="VERSION" value="${maven.project.version}" />
         <filter token="DISTRIB_VERSION" value="${nuxeo.platform.version}" />
         <filter token="NUXEO_TARGET_VERSION" value="${nuxeo.target.version}" />
-        <filter token="STUDIO_PROJECT_VERSION" value="${studio.project.version}" />
       </filterset>
     </copy>
     <copy file="${outdir}/onlyoffice-nuxeo-artifacts.properties" todir="${outdir}/marketplace/install"/>
@@ -39,7 +38,6 @@
       <artifact:set>
         <includes>
           <artifact groupId="org.nuxeo*" />
-          <artifact groupId="nuxeo-studio" />
           <!-- Include your artifacts using their groupId for instance -->
           <artifact groupId="org.onlyoffice*" />
         </includes>
@@ -63,7 +61,6 @@
           <artifact scope="test" />
           <artifact scope="provided" />
           <artifact type="pom" />
-          <artifact groupId="nuxeo-studio" />
           <!-- Filter out your artifacts using their groupId for instance -->
           <artifact groupId="org.onlyoffice*"/>
         </excludes>
